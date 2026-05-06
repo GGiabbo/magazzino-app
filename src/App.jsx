@@ -22,7 +22,7 @@ import {
   doc,
   setDoc,
   onSnapshot,
-  deleteDoc
+  writeBatch
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -98,7 +98,7 @@ export default function App() {
     await signOut(auth);
   };
 
-  // AUTH LISTENER
+  // AUTH
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
@@ -107,7 +107,7 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  // FIRESTORE
+  // FIRESTORE REALTIME
   useEffect(() => {
     if (!user) return;
 
@@ -160,14 +160,21 @@ export default function App() {
     setScanValue("");
   };
 
-  // SVUOTA MAGAZZINO
+  // 🧹 SVUOTA MAGAZZINO (BATCH 🚀)
   const handleClear = async () => {
     try {
-      for (const item of inventory) {
-        await deleteDoc(doc(db, "inventory", item.id));
-      }
+      const batch = writeBatch(db);
+
+      inventory.forEach(item => {
+        const ref = doc(db, "inventory", item.id);
+        batch.delete(ref);
+      });
+
+      await batch.commit();
+
       setShowConfirm(false);
       setLastScan(null);
+
     } catch (err) {
       console.error(err);
       alert("Errore nello svuotamento");
