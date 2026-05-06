@@ -2,10 +2,9 @@ import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
   ScanBarcode,
   MapPin,
-  PackagePlus,
-  CheckCircle2,
   AlertTriangle,
-  Loader2
+  Loader2,
+  LogOut
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -14,7 +13,8 @@ import { initializeApp } from "firebase/app";
 import {
   getAuth,
   signInWithEmailAndPassword,
-  onAuthStateChanged
+  onAuthStateChanged,
+  signOut
 } from "firebase/auth";
 import {
   getFirestore,
@@ -38,10 +38,6 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-/* 🔐 ACCOUNT CONDIVISO */
-const EMAIL = "user@magazzino.com";
-const PASSWORD = "suppsupp";
-
 /* CONFIG MAGAZZINO */
 const COLORS = [
   "Arancio","Giallo","Rosso","Marrone","Rosa",
@@ -52,6 +48,20 @@ const Y_AXIS = ["1","2","3","4","5","6"];
 
 export default function App() {
 
+  /* 🔐 LOGIN STATE */
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  /* APP STATE */
+  const [user, setUser] = useState(null);
+  const [inventory, setInventory] = useState([]);
+  const [scanValue, setScanValue] = useState("");
+  const [lastScan, setLastScan] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const inputRef = useRef(null);
+
+  /* SLOT */
   const allSlots = useMemo(() => {
     const slots = [];
     COLORS.forEach(color => {
@@ -69,31 +79,31 @@ export default function App() {
     return slots;
   }, []);
 
-  const [user, setUser] = useState(null);
-  const [inventory, setInventory] = useState([]);
-  const [scanValue, setScanValue] = useState("");
-  const [lastScan, setLastScan] = useState(null);
-  const [loading, setLoading] = useState(true);
+  /* 🔐 LOGIN */
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch {
+      alert("Credenziali sbagliate");
+    }
+  };
 
-  const inputRef = useRef(null);
+  /* 🚪 LOGOUT */
+  const handleLogout = async () => {
+    await signOut(auth);
+  };
 
-  /* 🔐 LOGIN AUTOMATICO */
+  /* AUTH LISTENER */
   useEffect(() => {
-    const login = async () => {
-      try {
-        await signInWithEmailAndPassword(auth, EMAIL, PASSWORD);
-      } catch (err) {
-        console.error("Errore login:", err);
-      }
-    };
-
-    login();
-
-    const unsub = onAuthStateChanged(auth, setUser);
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      if (!u) setLoading(false);
+    });
     return () => unsub();
   }, []);
 
-  /* ☁️ FIRESTORE REALTIME */
+  /* FIRESTORE */
   useEffect(() => {
     if (!user) return;
 
@@ -109,7 +119,7 @@ export default function App() {
     return () => unsub();
   }, [user]);
 
-  /* 📦 SCANSIONE */
+  /* SCAN */
   const handleScan = async (e) => {
     e.preventDefault();
 
@@ -146,7 +156,7 @@ export default function App() {
     setScanValue("");
   };
 
-  /* 🎯 AUTOFOCUS */
+  /* AUTOFOCUS */
   useEffect(() => {
     inputRef.current?.focus();
   }, [lastScan]);
@@ -160,13 +170,49 @@ export default function App() {
     );
   }
 
+  /* 🔐 SCHERMATA LOGIN */
+  if (!user) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-100">
+        <form onSubmit={handleLogin} className="bg-white p-6 rounded-xl shadow w-80">
+          <h2 className="text-xl font-bold mb-4 text-center">Login</h2>
+
+          <input
+            type="email"
+            placeholder="Email"
+            onChange={(e) => setEmail(e.target.value)}
+            className="block mb-3 p-2 border w-full rounded"
+          />
+
+          <input
+            type="password"
+            placeholder="Password"
+            onChange={(e) => setPassword(e.target.value)}
+            className="block mb-3 p-2 border w-full rounded"
+          />
+
+          <button className="bg-blue-500 text-white px-4 py-2 w-full rounded">
+            Entra
+          </button>
+        </form>
+      </div>
+    );
+  }
+
+  /* 📦 APP */
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-100 p-6 flex flex-col items-center">
 
       {/* HEADER */}
-      <h1 className="text-3xl font-black flex items-center gap-2 mb-6">
-        <ScanBarcode /> Magazzino Smart
-      </h1>
+      <div className="flex justify-between w-full max-w-md mb-4">
+        <h1 className="text-2xl font-black flex items-center gap-2">
+          <ScanBarcode /> Magazzino
+        </h1>
+
+        <button onClick={handleLogout}>
+          <LogOut />
+        </button>
+      </div>
 
       {/* INPUT */}
       <form onSubmit={handleScan} className="w-full max-w-md mb-6">
@@ -175,46 +221,42 @@ export default function App() {
           value={scanValue}
           onChange={(e) => setScanValue(e.target.value)}
           placeholder="Scansiona codice..."
-          className="w-full px-6 py-4 rounded-2xl shadow-lg border focus:ring-4 focus:ring-blue-300 text-center text-xl"
+          className="w-full px-6 py-4 rounded-2xl shadow border text-center text-xl"
         />
       </form>
 
       {/* RISULTATO */}
       {lastScan && (
         <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md text-center"
+          initial={{ scale: 0.9 }}
+          animate={{ scale: 1 }}
+          className="bg-white p-6 rounded-xl shadow w-full max-w-md text-center"
         >
-          <p className="text-gray-400">Codice</p>
-          <h2 className="text-2xl font-bold">{lastScan.item.code}</h2>
+          <h2 className="text-xl font-bold">{lastScan.item.code}</h2>
 
           {lastScan.type === "FULL" ? (
-            <div className="text-red-500 mt-4">
-              <AlertTriangle size={40} />
-              <p>Magazzino pieno</p>
+            <div className="text-red-500 mt-3">
+              <AlertTriangle />
+              <p>Pieno</p>
             </div>
           ) : (
             <>
-              <p className="text-gray-400 mt-4">Posizione</p>
-              <h3 className="text-3xl font-black">
-                {lastScan.item.color} {lastScan.item.x}-{lastScan.item.y}
+              <p className="mt-3">Posizione</p>
+              <h3 className="text-2xl font-black">
+                {lastScan.item.x}-{lastScan.item.y}
               </h3>
-              <MapPin className="mx-auto mt-2" />
+              <MapPin />
             </>
           )}
         </motion.div>
       )}
 
       {/* LISTA */}
-      <div className="mt-8 w-full max-w-md">
+      <div className="mt-6 w-full max-w-md">
         {inventory.map(item => (
-          <div
-            key={item.id}
-            className="bg-white p-3 rounded-xl shadow mb-2 flex justify-between"
-          >
+          <div key={item.id} className="bg-white p-3 rounded shadow mb-2 flex justify-between">
             <span>{item.code}</span>
-            <span className="font-bold">{item.x}-{item.y}</span>
+            <span>{item.x}-{item.y}</span>
           </div>
         ))}
       </div>
