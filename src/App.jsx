@@ -9,9 +9,13 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 
-// Firebase
+// FIREBASE
 import { initializeApp } from "firebase/app";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "firebase/auth";
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  onAuthStateChanged
+} from "firebase/auth";
 import {
   getFirestore,
   collection,
@@ -34,7 +38,11 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// CONFIG MAGAZZINO
+/* 🔐 ACCOUNT CONDIVISO */
+const EMAIL = "user@magazzino.com";
+const PASSWORD = "suppsupp";
+
+/* CONFIG MAGAZZINO */
 const COLORS = [
   "Arancio","Giallo","Rosso","Marrone","Rosa",
   "Legno","Fucsia","Blu","Verde","Nero"
@@ -69,14 +77,23 @@ export default function App() {
 
   const inputRef = useRef(null);
 
-  // AUTH
+  /* 🔐 LOGIN AUTOMATICO */
   useEffect(() => {
-    signInAnonymously(auth);
+    const login = async () => {
+      try {
+        await signInWithEmailAndPassword(auth, EMAIL, PASSWORD);
+      } catch (err) {
+        console.error("Errore login:", err);
+      }
+    };
+
+    login();
+
     const unsub = onAuthStateChanged(auth, setUser);
     return () => unsub();
   }, []);
 
-  // FIRESTORE SYNC
+  /* ☁️ FIRESTORE REALTIME */
   useEffect(() => {
     if (!user) return;
 
@@ -92,7 +109,7 @@ export default function App() {
     return () => unsub();
   }, [user]);
 
-  // SCAN
+  /* 📦 SCANSIONE */
   const handleScan = async (e) => {
     e.preventDefault();
 
@@ -129,11 +146,12 @@ export default function App() {
     setScanValue("");
   };
 
-  // AUTO FOCUS
+  /* 🎯 AUTOFOCUS */
   useEffect(() => {
     inputRef.current?.focus();
   }, [lastScan]);
 
+  /* ⏳ LOADING */
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center">
@@ -161,7 +179,7 @@ export default function App() {
         />
       </form>
 
-      {/* RESULT */}
+      {/* RISULTATO */}
       {lastScan && (
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
