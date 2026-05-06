@@ -39,11 +39,8 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-/* CONFIG MAGAZZINO */
-const COLORS = [
-  "Arancio","Giallo","Rosso","Marrone","Rosa",
-  "Legno","Fucsia","Blu","Verde","Nero"
-];
+/* MAGAZZINO */
+const COLORS = ["Arancio","Giallo","Rosso","Marrone","Rosa","Legno","Fucsia","Blu","Verde","Nero"];
 const X_AXIS = ["A","B","C","D"];
 const Y_AXIS = ["1","2","3","4","5","6"];
 
@@ -58,9 +55,9 @@ export default function App() {
   const [inventory, setInventory] = useState([]);
   const [scanValue, setScanValue] = useState("");
   const [lastScan, setLastScan] = useState(null);
-  const [loading, setLoading] = useState(true);
 
-  // SVUOTA
+  // UI
+  const [loading, setLoading] = useState(true);
   const [showConfirm, setShowConfirm] = useState(false);
 
   const inputRef = useRef(null);
@@ -83,6 +80,36 @@ export default function App() {
     return slots;
   }, []);
 
+  // 🔐 AUTH CHECK (FIX PRINCIPALE)
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setLoading(false); // 🔥 fondamentale
+    });
+
+    return () => unsub();
+  }, []);
+
+  // 💣 (OPZIONALE) FORZA LOGIN SEMPRE
+  // useEffect(() => {
+  //   signOut(auth);
+  // }, []);
+
+  // FIRESTORE
+  useEffect(() => {
+    if (!user) return;
+
+    const ref = collection(db, "inventory");
+
+    const unsub = onSnapshot(ref, (snap) => {
+      const data = [];
+      snap.forEach(d => data.push({ id: d.id, ...d.data() }));
+      setInventory(data);
+    });
+
+    return () => unsub();
+  }, [user]);
+
   // LOGIN
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -97,31 +124,6 @@ export default function App() {
   const handleLogout = async () => {
     await signOut(auth);
   };
-
-  // AUTH
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      if (!u) setLoading(false);
-    });
-    return () => unsub();
-  }, []);
-
-  // FIRESTORE REALTIME
-  useEffect(() => {
-    if (!user) return;
-
-    const ref = collection(db, "inventory");
-
-    const unsub = onSnapshot(ref, (snap) => {
-      const data = [];
-      snap.forEach(d => data.push({ id: d.id, ...d.data() }));
-      setInventory(data);
-      setLoading(false);
-    });
-
-    return () => unsub();
-  }, [user]);
 
   // SCAN
   const handleScan = async (e) => {
@@ -160,25 +162,18 @@ export default function App() {
     setScanValue("");
   };
 
-  // 🧹 SVUOTA MAGAZZINO (BATCH 🚀)
+  // 🧹 BATCH DELETE
   const handleClear = async () => {
-    try {
-      const batch = writeBatch(db);
+    const batch = writeBatch(db);
 
-      inventory.forEach(item => {
-        const ref = doc(db, "inventory", item.id);
-        batch.delete(ref);
-      });
+    inventory.forEach(item => {
+      batch.delete(doc(db, "inventory", item.id));
+    });
 
-      await batch.commit();
+    await batch.commit();
 
-      setShowConfirm(false);
-      setLastScan(null);
-
-    } catch (err) {
-      console.error(err);
-      alert("Errore nello svuotamento");
-    }
+    setShowConfirm(false);
+    setLastScan(null);
   };
 
   // AUTOFOCUS
@@ -186,7 +181,7 @@ export default function App() {
     inputRef.current?.focus();
   }, [lastScan]);
 
-  // LOADING
+  // ⏳ LOADING BLOCCANTE
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center">
@@ -195,7 +190,7 @@ export default function App() {
     );
   }
 
-  // LOGIN UI
+  // 🔐 LOGIN PRIMA DI TUTTO
   if (!user) {
     return (
       <div className="h-screen flex items-center justify-center bg-gray-100">
@@ -224,6 +219,7 @@ export default function App() {
     );
   }
 
+  // 📦 APP
   return (
     <div className="min-h-screen bg-gray-100 p-6 flex flex-col items-center">
 
@@ -231,22 +227,13 @@ export default function App() {
       {showConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
           <div className="bg-white p-6 rounded-xl shadow text-center">
-            <h2 className="text-lg font-bold mb-4">
-              Svuotare il magazzino?
-            </h2>
+            <h2 className="font-bold mb-4">Svuotare tutto?</h2>
 
             <div className="flex gap-3">
-              <button
-                onClick={() => setShowConfirm(false)}
-                className="px-4 py-2 bg-gray-300 rounded"
-              >
+              <button onClick={() => setShowConfirm(false)} className="px-4 py-2 bg-gray-300 rounded">
                 Annulla
               </button>
-
-              <button
-                onClick={handleClear}
-                className="px-4 py-2 bg-red-500 text-white rounded"
-              >
+              <button onClick={handleClear} className="px-4 py-2 bg-red-500 text-white rounded">
                 Conferma
               </button>
             </div>
@@ -261,13 +248,9 @@ export default function App() {
         </h1>
 
         <div className="flex gap-2">
-          <button
-            onClick={() => setShowConfirm(true)}
-            className="bg-red-500 text-white px-3 py-1 rounded"
-          >
+          <button onClick={() => setShowConfirm(true)} className="bg-red-500 text-white px-3 py-1 rounded">
             Svuota
           </button>
-
           <button onClick={handleLogout}>
             <LogOut />
           </button>
@@ -287,11 +270,7 @@ export default function App() {
 
       {/* RISULTATO */}
       {lastScan && (
-        <motion.div
-          initial={{ scale: 0.9 }}
-          animate={{ scale: 1 }}
-          className="bg-white p-6 rounded-xl shadow w-full max-w-md text-center"
-        >
+        <motion.div className="bg-white p-6 rounded-xl shadow w-full max-w-md text-center">
           <h2 className="text-xl font-bold">{lastScan.item.code}</h2>
 
           {lastScan.type === "FULL" ? (
