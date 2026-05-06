@@ -21,7 +21,8 @@ import {
   collection,
   doc,
   setDoc,
-  onSnapshot
+  onSnapshot,
+  deleteDoc
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -48,20 +49,23 @@ const Y_AXIS = ["1","2","3","4","5","6"];
 
 export default function App() {
 
-  /* 🔐 LOGIN STATE */
+  // LOGIN
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  /* APP STATE */
+  // APP
   const [user, setUser] = useState(null);
   const [inventory, setInventory] = useState([]);
   const [scanValue, setScanValue] = useState("");
   const [lastScan, setLastScan] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // SVUOTA
+  const [showConfirm, setShowConfirm] = useState(false);
+
   const inputRef = useRef(null);
 
-  /* SLOT */
+  // SLOT
   const allSlots = useMemo(() => {
     const slots = [];
     COLORS.forEach(color => {
@@ -79,7 +83,7 @@ export default function App() {
     return slots;
   }, []);
 
-  /* 🔐 LOGIN */
+  // LOGIN
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
@@ -89,12 +93,12 @@ export default function App() {
     }
   };
 
-  /* 🚪 LOGOUT */
+  // LOGOUT
   const handleLogout = async () => {
     await signOut(auth);
   };
 
-  /* AUTH LISTENER */
+  // AUTH LISTENER
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
@@ -103,7 +107,7 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  /* FIRESTORE */
+  // FIRESTORE
   useEffect(() => {
     if (!user) return;
 
@@ -111,7 +115,7 @@ export default function App() {
 
     const unsub = onSnapshot(ref, (snap) => {
       const data = [];
-      snap.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
+      snap.forEach(d => data.push({ id: d.id, ...d.data() }));
       setInventory(data);
       setLoading(false);
     });
@@ -119,7 +123,7 @@ export default function App() {
     return () => unsub();
   }, [user]);
 
-  /* SCAN */
+  // SCAN
   const handleScan = async (e) => {
     e.preventDefault();
 
@@ -156,12 +160,26 @@ export default function App() {
     setScanValue("");
   };
 
-  /* AUTOFOCUS */
+  // SVUOTA MAGAZZINO
+  const handleClear = async () => {
+    try {
+      for (const item of inventory) {
+        await deleteDoc(doc(db, "inventory", item.id));
+      }
+      setShowConfirm(false);
+      setLastScan(null);
+    } catch (err) {
+      console.error(err);
+      alert("Errore nello svuotamento");
+    }
+  };
+
+  // AUTOFOCUS
   useEffect(() => {
     inputRef.current?.focus();
   }, [lastScan]);
 
-  /* ⏳ LOADING */
+  // LOADING
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center">
@@ -170,7 +188,7 @@ export default function App() {
     );
   }
 
-  /* 🔐 SCHERMATA LOGIN */
+  // LOGIN UI
   if (!user) {
     return (
       <div className="h-screen flex items-center justify-center bg-gray-100">
@@ -199,9 +217,35 @@ export default function App() {
     );
   }
 
-  /* 📦 APP */
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-100 p-6 flex flex-col items-center">
+    <div className="min-h-screen bg-gray-100 p-6 flex flex-col items-center">
+
+      {/* POPUP */}
+      {showConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-xl shadow text-center">
+            <h2 className="text-lg font-bold mb-4">
+              Svuotare il magazzino?
+            </h2>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="px-4 py-2 bg-gray-300 rounded"
+              >
+                Annulla
+              </button>
+
+              <button
+                onClick={handleClear}
+                className="px-4 py-2 bg-red-500 text-white rounded"
+              >
+                Conferma
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* HEADER */}
       <div className="flex justify-between w-full max-w-md mb-4">
@@ -209,9 +253,18 @@ export default function App() {
           <ScanBarcode /> Magazzino
         </h1>
 
-        <button onClick={handleLogout}>
-          <LogOut />
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowConfirm(true)}
+            className="bg-red-500 text-white px-3 py-1 rounded"
+          >
+            Svuota
+          </button>
+
+          <button onClick={handleLogout}>
+            <LogOut />
+          </button>
+        </div>
       </div>
 
       {/* INPUT */}
