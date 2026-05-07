@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
+
 import {
   ScanBarcode,
   MapPin,
@@ -9,7 +10,7 @@ import {
 
 import { motion } from "framer-motion";
 
-// FIREBASE
+/* 🔥 FIREBASE */
 import { initializeApp } from "firebase/app";
 
 import {
@@ -69,10 +70,10 @@ export default function App() {
   /* 👤 USER */
   const [user, setUser] = useState(null);
 
-  /* 📦 INVENTORY */
+  /* 📦 INVENTARIO */
   const [inventory, setInventory] = useState([]);
 
-  /* 🔍 SCAN */
+  /* 🔍 SCANSIONE */
   const [scanValue, setScanValue] = useState("");
   const [lastScan, setLastScan] = useState(null);
 
@@ -87,7 +88,7 @@ export default function App() {
     signOut(auth);
   }, []);
 
-  /* 📦 SLOT */
+  /* 📦 GENERAZIONE SLOT */
   const allSlots = useMemo(() => {
 
     const slots = [];
@@ -115,7 +116,7 @@ export default function App() {
 
   }, []);
 
-  /* 🔐 AUTH CHECK */
+  /* 🔐 CONTROLLO LOGIN */
   useEffect(() => {
 
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -141,10 +142,12 @@ export default function App() {
       const data = [];
 
       snap.forEach(d => {
+
         data.push({
           id: d.id,
           ...d.data()
         });
+
       });
 
       setInventory(data);
@@ -245,7 +248,7 @@ export default function App() {
 
   };
 
-  /* 🧹 SVUOTA */
+  /* 🧹 SVUOTA MAGAZZINO */
   const handleClear = async () => {
 
     const batch = writeBatch(db);
@@ -276,9 +279,16 @@ export default function App() {
   if (loading) {
 
     return (
+
       <div className="h-screen flex items-center justify-center">
-        <Loader2 className="animate-spin" size={40} />
+
+        <Loader2
+          className="animate-spin"
+          size={40}
+        />
+
       </div>
+
     );
 
   }
@@ -330,7 +340,7 @@ export default function App() {
 
     <div className="min-h-screen bg-gray-100 p-6 flex flex-col items-center">
 
-      {/* ⚠️ POPUP */}
+      {/* ⚠️ MODALE */}
       {showConfirm && (
 
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
@@ -369,6 +379,7 @@ export default function App() {
       <div className="flex justify-between w-full max-w-md mb-4">
 
         <h1 className="text-2xl font-black flex items-center gap-2">
+          <ScanBarcode />
           Magazzino
         </h1>
 
@@ -424,7 +435,7 @@ export default function App() {
 
               <AlertTriangle />
 
-              <p>Pieno</p>
+              <p>Magazzino pieno</p>
 
             </div>
 
@@ -432,15 +443,17 @@ export default function App() {
 
             <>
 
-              <p className="mt-3">
+              <p className="mt-3 text-gray-500">
                 Posizione
               </p>
 
-              <h3 className="text-2xl font-black">
-                {lastScan.item.x}-{lastScan.item.y}
+              <h3 className="text-3xl font-black mt-2">
+                {lastScan.item.color} {lastScan.item.x}-{lastScan.item.y}
               </h3>
 
-              <MapPin />
+              <div className="flex justify-center mt-3">
+                <MapPin />
+              </div>
 
             </>
 
@@ -450,7 +463,7 @@ export default function App() {
 
       )}
 
-      {/* 📋 LISTA */}
+      {/* 📋 STORICO */}
       <div className="mt-6 w-full max-w-md">
 
         {inventory.map(item => (
@@ -460,10 +473,12 @@ export default function App() {
             className="bg-white p-3 rounded shadow mb-2 flex justify-between"
           >
 
-            <span>{item.code}</span>
-
             <span>
-              {item.x}-{item.y}
+              {item.code}
+            </span>
+
+            <span className="font-bold">
+              {item.color} {item.x}-{item.y}
             </span>
 
           </div>
