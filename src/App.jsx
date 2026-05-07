@@ -45,9 +45,9 @@ const db = getFirestore(app);
 
 /* 📦 CONFIG MAGAZZINO */
 const COLORS = [
-  "Arancio",
-  "Giallo",
   "Rosso",
+  "Giallo",
+  "Arancione",
   "Marrone",
   "Rosa",
   "Legno",
@@ -369,7 +369,6 @@ export default function App() {
       <div className="flex justify-between w-full max-w-md mb-4">
 
         <h1 className="text-2xl font-black flex items-center gap-2">
-          <ScanBarcode />
           Magazzino
         </h1>
 
