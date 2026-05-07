@@ -46,9 +46,9 @@ const db = getFirestore(app);
 
 /* 📦 CONFIG MAGAZZINO */
 const COLORS = [
-  "Rosso",
+  "Arancio",
   "Giallo",
-  "Arancione",
+  "Rosso",
   "Marrone",
   "Rosa",
   "Legno",
@@ -88,7 +88,7 @@ export default function App() {
     signOut(auth);
   }, []);
 
-  /* 📦 GENERAZIONE SLOT */
+  /* 📦 SLOT */
   const allSlots = useMemo(() => {
 
     const slots = [];
@@ -248,7 +248,7 @@ export default function App() {
 
   };
 
-  /* 🧹 SVUOTA MAGAZZINO */
+  /* 🧹 SVUOTA */
   const handleClear = async () => {
 
     const batch = writeBatch(db);
@@ -293,7 +293,7 @@ export default function App() {
 
   }
 
-  /* 🔐 LOGIN SCREEN */
+  /* 🔐 LOGIN */
   if (!user) {
 
     return (
@@ -478,7 +478,7 @@ export default function App() {
             </span>
 
             <span className="font-bold">
-              {item.color} {item.x}-{item.y}
+              {" "} {item.color} {item.x}-{item.y}
             </span>
 
           </div>
